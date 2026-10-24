@@ -1,0 +1,273 @@
+{
+  "name": "Track hotel rate parity from Google Hotels in Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Track hotel rate parity from Google Hotels in Google Sheets\nEvery morning, this workflow runs the [Google Hotels Scraper & Price Tracker](https://apify.com/myth84/google-hotels-scraper) on Apify with `includeOffers`: the price of every booking site for each hotel of a search, for a 2-night stay 30 days ahead. It appends **one row per hotel** to a Google Sheet:\n\n`date`, `checkIn`, `title`, `starRating`, `currency`, `cheapestOfferSite`, `cheapestOfferPriceTotal`, `officialSitePriceTotal`, `officialSiteGap`, `officialSiteGapPercent`, `offerCount`, `url`.\n\n`officialSiteGap` = price on the hotel's own website minus the cheapest booking site, taxes included (`officialSiteGapPercent`: the same in % of the cheapest). 0: the website is the cheapest, or tied. Above 0: a booking site undercuts the hotel's website. Empty: no website rate.\n\nNo personal data: never review texts or authors.\n\nThe workflow calls a paid Apify Actor built by Flatrow Data Studio (the author of this workflow).",
+        "height": 640,
+        "width": 500,
+        "color": 4
+      },
+      "id": "7e16d959-a964-4c3d-a433-8f5b3f6cbdfc",
+      "name": "Note: what this workflow does",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Apify credential\nCreate a free account on apify.com and copy your API token (Apify Console > Settings > API & Integrations).\n\nIn **Run Google Hotels Scraper**, create a **Header Auth** credential:\n- Name: `Authorization`\n- Value: `Bearer <your-apify-token>`\n\n### 2. Google Sheets credential\nCreate an empty Google Sheet. In **Append rows to Google Sheets**, connect a Google Sheets credential, then paste the sheet URL in **Document**. Rows go to the first tab; the first run writes the header row.\n\n### 3. Test, then activate\nClick **Execute workflow**: 20 results take about a minute. Then activate (publish) the workflow: it runs every day at 7:00 in the time zone of your n8n.",
+        "height": 460,
+        "width": 440,
+        "color": 1
+      },
+      "id": "fbf81c74-24c9-43d8-b2ab-0e0536c7a599",
+      "name": "Note: credentials",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Change the city or the stay\nEdit the **JSON** body of **Run Google Hotels Scraper**:\n- `searchQueries`: one or more searches, as typed on Google Hotels (`\"hotels in Rome\"`); `maxResults` applies to each one\n- `checkInDaysFromNow` and `nights`: the stay, counted from the day of the run; or fixed `checkIn` and `checkOut` dates (YYYY-MM-DD)\n- `adults` and `currency`; keep `includeOffers` at `true`: it fetches the booking-site prices\n\nEvery input field is documented on the [Actor page](https://apify.com/myth84/google-hotels-scraper). Change the hour in **Every day at 7:00**.",
+        "height": 460,
+        "width": 440,
+        "color": 5
+      },
+      "id": "dc671a29-bbac-426b-b829-4f8a181b45ec",
+      "name": "Note: change the city or the stay",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        460,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Cost\nPay per result, compute and proxies included: $2.50 per 1,000 hotels on the Apify Free plan, from $1.69 on paid plans; the booking-site prices cost nothing more. With `maxResults` at 20: about $0.05 per run, about $1.50 a month for a daily run, within the $5 monthly credit of the Apify Free plan.",
+        "height": 220,
+        "width": 440,
+        "color": 7
+      },
+      "id": "18bdc392-e6df-4d78-81c4-a331a81e0ab4",
+      "name": "Note: cost",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "62821c46-c2c5-44ae-add0-faba5eac5e52",
+      "name": "Every day at 7:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        40,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/myth84~google-hotels-scraper/run-sync-get-dataset-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"searchQueries\": [\n    \"hotels in Lisbon\"\n  ],\n  \"checkInDaysFromNow\": 30,\n  \"nights\": 2,\n  \"adults\": 2,\n  \"currency\": \"USD\",\n  \"maxResults\": 20,\n  \"includeOffers\": true\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "370495b5-5790-453f-ba6b-e846e26fdbc9",
+      "name": "Run Google Hotels Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        260,
+        40
+      ],
+      "notes": "Google Hotels Scraper & Price Tracker on Apify. Apify waits for the run to finish and returns its rows; n8n turns each row into one item."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "677fd189-9773-40d0-b9ba-7635d4e5e05e",
+              "name": "date",
+              "value": "={{ $json.scrapedAt.slice(0, 10) }}",
+              "type": "string"
+            },
+            {
+              "id": "853da40a-0f22-4c23-a222-e6472147d77e",
+              "name": "checkIn",
+              "value": "={{ $json.checkIn }}",
+              "type": "string"
+            },
+            {
+              "id": "e9b086e9-f12b-4b4a-878e-dbaf033dcce7",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "120b9b51-d5b8-45f9-ae38-28ef5b7c31eb",
+              "name": "starRating",
+              "value": "={{ $json.starRating }}",
+              "type": "number"
+            },
+            {
+              "id": "2e79b246-0efd-4dd2-892b-0b1dca168125",
+              "name": "currency",
+              "value": "={{ $json.currency }}",
+              "type": "string"
+            },
+            {
+              "id": "8d365e37-2f46-4f59-94a3-ad503e508fe6",
+              "name": "cheapestOfferSite",
+              "value": "={{ $json.cheapestOfferSite }}",
+              "type": "string"
+            },
+            {
+              "id": "b0329f5b-ddae-4f4a-8f3c-696eabdd4958",
+              "name": "cheapestOfferPriceTotal",
+              "value": "={{ $json.cheapestOfferPriceTotal }}",
+              "type": "number"
+            },
+            {
+              "id": "8bc0db4c-377d-4ccd-8301-2aa710744a63",
+              "name": "officialSitePriceTotal",
+              "value": "={{ $json.officialSitePriceTotal }}",
+              "type": "number"
+            },
+            {
+              "id": "139ac110-16a2-4eae-a3b5-3b11f2cb4a1a",
+              "name": "officialSiteGap",
+              "value": "={{ $json.officialSitePriceTotal != null && $json.cheapestOfferPriceTotal != null ? Math.round(($json.officialSitePriceTotal - $json.cheapestOfferPriceTotal) * 100) / 100 : null }}",
+              "type": "number"
+            },
+            {
+              "id": "8275ec11-691b-47bd-aa07-fc8790e82747",
+              "name": "officialSiteGapPercent",
+              "value": "={{ $json.officialSitePriceTotal != null && $json.cheapestOfferPriceTotal ? Math.round(($json.officialSitePriceTotal - $json.cheapestOfferPriceTotal) / $json.cheapestOfferPriceTotal * 1000) / 10 : null }}",
+              "type": "number"
+            },
+            {
+              "id": "66c7e4b7-d03a-4d2b-9e4a-425da8334526",
+              "name": "offerCount",
+              "value": "={{ $json.offerCount }}",
+              "type": "number"
+            },
+            {
+              "id": "ba6096e0-5fec-4427-9190-b9e358d806f1",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "62348796-1255-40fd-a4a3-7394217477cf",
+      "name": "Compute the rate parity gap",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        500,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "c3837e59-1fc7-490b-919c-704ff258f365",
+      "name": "Append rows to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        740,
+        40
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every day at 7:00": {
+      "main": [
+        [
+          {
+            "node": "Run Google Hotels Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Google Hotels Scraper": {
+      "main": [
+        [
+          {
+            "node": "Compute the rate parity gap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute the rate parity gap": {
+      "main": [
+        [
+          {
+            "node": "Append rows to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

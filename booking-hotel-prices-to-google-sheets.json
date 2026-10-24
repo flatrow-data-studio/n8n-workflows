@@ -1,0 +1,267 @@
+{
+  "name": "Track Booking.com hotel prices daily in Google Sheets",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Track Booking.com hotel prices in Google Sheets\nEvery morning, this workflow runs the [Booking.com Hotels Scraper & Price Tracker](https://apify.com/myth84/booking-hotels-scraper) on Apify for one destination and a 3-night stay 30 days ahead, then appends **one row per property** to a Google Sheet:\n\n`date`, `checkIn`, `searchLocation`, `title`, `priceTotal` (before the excluded taxes), `priceTotalAllIn` (taxes included), `currency`, `rating` (out of 10), `reviewCount`, `starRating`, `url`.\n\nEach run prices a stay that starts 30 days later (`checkIn`), so the sheet tracks what a stay one month ahead costs, day after day: filter on `title` and chart `priceTotalAllIn` by `date`.\n\nNo personal data: nothing about guests or reviewers.\n\nThe workflow calls a paid Apify Actor built by Flatrow Data Studio (the author of this workflow).",
+        "height": 640,
+        "width": 500,
+        "color": 4
+      },
+      "id": "ea76c509-3989-48dc-ba9e-d83615fb51cc",
+      "name": "Note: what this workflow does",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Apify credential\nCreate a free account on apify.com and copy your API token (Apify Console > Settings > API & Integrations).\n\nIn **Run Booking.com Hotels Scraper**, create a **Header Auth** credential:\n- Name: `Authorization`\n- Value: `Bearer <your-apify-token>`\n\n### 2. Google Sheets credential\nCreate an empty Google Sheet. In **Append rows to Google Sheets**, connect a Google Sheets credential, then paste the sheet URL in **Document**. Rows go to the first tab; the first run writes the header row.\n\n### 3. Test, then activate\nClick **Execute workflow**: 20 results take about a minute. Then activate (publish) the workflow: it runs every day at 7:00 in the time zone of your n8n.",
+        "height": 460,
+        "width": 440,
+        "color": 1
+      },
+      "id": "03395cfd-57d3-46df-b59f-5c5741960550",
+      "name": "Note: credentials",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Change the city or the stay\nEdit the **JSON** body of **Run Booking.com Hotels Scraper**:\n- `locations`: one or more destinations, written as on Booking.com (`\"Paris, France\"`); `maxResults` applies to each one\n- `checkInDaysFromNow` and `nights`: the stay, counted from the day of the run; or fixed `checkIn` and `checkOut` dates (YYYY-MM-DD)\n- `adults`, `currency`, and filters such as `starRatings`, `minReviewScore` or `sortBy`\n\nEvery input field is documented on the [Actor page](https://apify.com/myth84/booking-hotels-scraper). Change the hour in **Every day at 7:00**.",
+        "height": 460,
+        "width": 440,
+        "color": 5
+      },
+      "id": "d3629a20-017c-409f-8416-637891296077",
+      "name": "Note: change the city or the stay",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        460,
+        -460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Cost\nPay per result, compute and proxies included: $2.50 per 1,000 properties on the Apify Free plan, from $1.69 on paid plans. With `maxResults` at 20: about $0.05 per run, about $1.50 a month for a daily run, within the $5 monthly credit of the Apify Free plan.",
+        "height": 220,
+        "width": 440,
+        "color": 7
+      },
+      "id": "c261bd6d-ebd4-46b3-a198-d277f99dca47",
+      "name": "Note: cost",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "f694191f-7b35-4f50-a20d-96a914fb71e2",
+      "name": "Every day at 7:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        40,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/myth84~booking-hotels-scraper/run-sync-get-dataset-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"locations\": [\n    \"Lisbon, Portugal\"\n  ],\n  \"checkInDaysFromNow\": 30,\n  \"nights\": 3,\n  \"adults\": 2,\n  \"currency\": \"EUR\",\n  \"maxResults\": 20\n}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "26627d15-d2b1-4cfe-b5ec-ec239f477e9e",
+      "name": "Run Booking.com Hotels Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        260,
+        40
+      ],
+      "notes": "Booking.com Hotels Scraper & Price Tracker on Apify. Apify waits for the run to finish and returns its rows; n8n turns each row into one item."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e09ed64-6088-4bea-8558-a2dcd9031d86",
+              "name": "date",
+              "value": "={{ $json.scrapedAt.slice(0, 10) }}",
+              "type": "string"
+            },
+            {
+              "id": "29ece733-db6c-4141-9146-84609c27d01a",
+              "name": "checkIn",
+              "value": "={{ $json.checkIn }}",
+              "type": "string"
+            },
+            {
+              "id": "8e2b973d-0924-462b-b22c-8bcac5fa7b19",
+              "name": "searchLocation",
+              "value": "={{ $json.searchLocation }}",
+              "type": "string"
+            },
+            {
+              "id": "1d9258c0-2043-4e4c-98d9-5529bc86e68d",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "4bcba20b-4c21-4916-b7e0-5c479a821c8a",
+              "name": "priceTotal",
+              "value": "={{ $json.priceTotal }}",
+              "type": "number"
+            },
+            {
+              "id": "6951dc51-fb2c-43bc-a9e7-568f90e4ee0c",
+              "name": "priceTotalAllIn",
+              "value": "={{ $json.priceTotalAllIn }}",
+              "type": "number"
+            },
+            {
+              "id": "4a530cc1-ba3f-4c21-b16f-c68d268666e9",
+              "name": "currency",
+              "value": "={{ $json.currency }}",
+              "type": "string"
+            },
+            {
+              "id": "b8ce4fbb-de0a-4866-9c39-4698254fb421",
+              "name": "rating",
+              "value": "={{ $json.rating }}",
+              "type": "number"
+            },
+            {
+              "id": "1662d212-8e6b-4947-8625-8ca74c7d5b6b",
+              "name": "reviewCount",
+              "value": "={{ $json.reviewCount }}",
+              "type": "number"
+            },
+            {
+              "id": "4a7f01d3-4823-4431-b878-03e9a983d96d",
+              "name": "starRating",
+              "value": "={{ $json.starRating }}",
+              "type": "number"
+            },
+            {
+              "id": "6a9264e4-82f9-47da-970c-832694ebfa87",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f7ea08fa-0412-498b-8797-2952c752eaa0",
+      "name": "Keep the sheet columns",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        500,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "ab52b9eb-a2ae-4d4b-9b5e-b7ef2aaca955",
+      "name": "Append rows to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        740,
+        40
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every day at 7:00": {
+      "main": [
+        [
+          {
+            "node": "Run Booking.com Hotels Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Booking.com Hotels Scraper": {
+      "main": [
+        [
+          {
+            "node": "Keep the sheet columns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep the sheet columns": {
+      "main": [
+        [
+          {
+            "node": "Append rows to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
